@@ -40,6 +40,11 @@ recorder:
 
 # Rellenar client_id / client_secret DESPUÉS de crear la skill en el paso 5
 # del README (Alexa Developer Console > Account Linking).
+#
+# NOTA (27 sept 2026): los valores reales ya están aplicados en el droplet
+# (/opt/dreame-ha/homeassistant/config/configuration.yaml) pero NO se
+# subieron a este repo a propósito — es un repo público y el client_secret
+# no debe publicarse. Aquí quedan los placeholders como plantilla.
 alexa:
   smart_home:
     locale: es-MX

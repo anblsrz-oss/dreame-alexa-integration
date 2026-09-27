@@ -129,6 +129,25 @@ tampoco alcanza, la alternativa de fondo es mover Home Assistant a su propio
 droplet (evaluado y descartado por ahora, riesgo aceptado — ver decisión
 más abajo).
 
+**Pasos 4, 5 y 6 completados (27 sept 2026):**
+- Bloque `alexa:` con los valores reales de la skill aplicado en el
+  `configuration.yaml` del droplet (`client_id: https://pitangui.amazon.com/`
+  — región Norteamérica, que es la que sirve a México). **El `client_secret`
+  NO está en este repo a propósito** (repo público); vive solo en el droplet.
+- Skill privada creada en Alexa Developer Console. Skill ID:
+  `amzn1.ask.skill.20c9a886-3f35-4f7d-bb4d-b4bedd909fe0`.
+- Función AWS Lambda puente desplegada en la cuenta personal de AWS
+  (`283449825232`, usuario IAM `dreame-lambda-setup` con permisos acotados a
+  Lambda + el rol del puente). Rol: `dreame-alexa-lambda-role`. Función:
+  `dreame-alexa-bridge`, Python 3.12, `us-east-1`, código del gist oficial
+  (copia local en `lambda/lambda_function.py`), `BASE_URL` como variable de
+  entorno, y permiso de invocación restringido a `alexa-appkit.amazon.com`
+  con `EventSourceToken` = Skill ID.
+  ARN: `arn:aws:lambda:us-east-1:283449825232:function:dreame-alexa-bridge`
+- Verificado con invocación de prueba: el handler corre, valida
+  `payloadVersion` y responde `INVALID_REQUEST` ante un evento sin token
+  (comportamiento correcto).
+
 **Riesgo de fondo reconocido y aceptado (27 sept 2026):** aun con estos
 ajustes, el droplet compartido sigue muy justo de RAM en general (todo el
 sistema, no solo el contenedor de HA). Se decidió **aceptar el riesgo por
@@ -137,29 +156,10 @@ separado, dado que ya quedó estable. Si vuelve a fallar, la opción de
 respaldo es un droplet nuevo y dedicado solo para Home Assistant (~$6-12
 USD/mes según RAM, 1-2 GB).
 
-## Reparto de los pasos 4–7 (acordado con quien administra el droplet)
-
-- **Paso 5 — skill privada en Alexa Developer Console (lo hace el usuario):**
-  crear skill Smart Home ("Provision your own"). En Account Linking:
-  - Authorization URI: `https://ha.alexa.alce-soft.com/auth/authorize`
-  - Access Token URI: `https://ha.alexa.alce-soft.com/auth/token`
-  - Client ID: `https://pitangui.amazon.com/`
-  - Client Secret: una cadena inventada
-  - Scope: `smart_home`
-- **Paso 4 — rellenar el bloque `alexa:` (lo hace quien administra el
-  droplet, por SSH, una vez el usuario tenga el Client ID/Secret del paso 5):**
-  sustituir los placeholders en `configuration.yaml` del droplet y reiniciar
-  HA. (También se puede hacer desde la UI de HA si el usuario prefiere.)
-- **Paso 6 — Lambda (lo hace el usuario):** función Python 3.12 en
-  `us-east-1` con el código del gist de matt2005, variable de entorno
-  `BASE_URL=https://ha.alexa.alce-soft.com`, trigger "Alexa Smart Home" con
-  el Skill ID, y pegar el ARN como Default endpoint de la skill.
-- **Paso 7 — probar (lo hace el usuario):** activar la skill en la app de
-  Alexa, completar el account linking (login contra HA), decir "Alexa,
-  descubre dispositivos".
-
-**Siguiente acción concreta:** el usuario hace el Paso 5 (crear la skill); en
-cuanto tenga el Client ID/Secret reales, se avisa para aplicar el Paso 4 en
-el droplet, y luego el usuario sigue con el Paso 6 (Lambda) y el Paso 7
-(prueba). Pendiente también lo de las zonas como `switch` helpers (ver
-arriba, sección de arquitectura).
+**Pendiente (Paso 7) — lo hace el usuario:** pegar el ARN
+`arn:aws:lambda:us-east-1:283449825232:function:dreame-alexa-bridge` como
+*Default endpoint* en la pestaña Smart Home de la skill, activar la skill en
+la app de Alexa (con la misma cuenta de Amazon del desarrollador), completar
+el account linking (login contra `ha.alexa.alce-soft.com`), decir "Alexa,
+descubre dispositivos" y probar encender/apagar. Pendiente también lo de las
+zonas como `switch` helpers (ver arriba, sección de arquitectura).

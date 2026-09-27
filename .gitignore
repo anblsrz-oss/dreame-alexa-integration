@@ -1,0 +1,22 @@
+# Credenciales y secretos — NUNCA subir (este repo es público)
+.env
+.env.*
+*.env
+!.env.example
+
+# Credenciales de AWS / estado local del CLI
+.aws/
+credentials
+
+# Archivos de estado de Home Assistant que no deben versionarse
+homeassistant/config/.storage/
+homeassistant/config/*.db
+homeassistant/config/*.db-*
+homeassistant/config/.cloud/
+homeassistant/config/known_devices.yaml
+homeassistant/config/home-assistant.log*
+
+# Varios
+*.log
+__pycache__/
+.DS_Store

@@ -141,12 +141,28 @@ más abajo).
   Lambda + el rol del puente). Rol: `dreame-alexa-lambda-role`. Función:
   `dreame-alexa-bridge`, Python 3.12, `us-east-1`, código del gist oficial
   (copia local en `lambda/lambda_function.py`), `BASE_URL` como variable de
-  entorno, y permiso de invocación restringido a `alexa-appkit.amazon.com`
-  con `EventSourceToken` = Skill ID.
+  entorno.
   ARN: `arn:aws:lambda:us-east-1:283449825232:function:dreame-alexa-bridge`
 - Verificado con invocación de prueba: el handler corre, valida
   `payloadVersion` y responde `INVALID_REQUEST` ante un evento sin token
   (comportamiento correcto).
+
+**Bug encontrado y resuelto: permiso de Lambda con el Principal equivocado.**
+Al pegar el ARN en la consola de Alexa (Smart Home → Default endpoint) daba
+`Failed to save skill information / Please make sure that "Alexa Smart Home"
+is selected for the event source type, for provided arn [Invalid value]`,
+aunque `aws lambda get-policy` ya mostraba un statement con
+`EventSourceToken` = Skill ID correcto. La causa real: el `Principal` del
+permiso era `alexa-appkit.amazon.com`, que es el principal para skills
+**custom** (conversación), no para **Smart Home**. El correcto es
+`alexa-connectedhome.amazon.com`. Se corrigió con:
+```
+aws lambda remove-permission --function-name dreame-alexa-bridge --statement-id alexa-smart-home --region us-east-1
+aws lambda add-permission --function-name dreame-alexa-bridge --statement-id alexa-smart-home \
+  --action lambda:InvokeFunction --principal alexa-connectedhome.amazon.com \
+  --event-source-token <SKILL_ID> --region us-east-1
+```
+Tras esto, el ARN se guardó sin problema en la consola de Alexa.
 
 **Riesgo de fondo reconocido y aceptado (27 sept 2026):** aun con estos
 ajustes, el droplet compartido sigue muy justo de RAM en general (todo el
@@ -156,10 +172,60 @@ separado, dado que ya quedó estable. Si vuelve a fallar, la opción de
 respaldo es un droplet nuevo y dedicado solo para Home Assistant (~$6-12
 USD/mes según RAM, 1-2 GB).
 
-**Pendiente (Paso 7) — lo hace el usuario:** pegar el ARN
-`arn:aws:lambda:us-east-1:283449825232:function:dreame-alexa-bridge` como
-*Default endpoint* en la pestaña Smart Home de la skill, activar la skill en
-la app de Alexa (con la misma cuenta de Amazon del desarrollador), completar
-el account linking (login contra `ha.alexa.alce-soft.com`), decir "Alexa,
-descubre dispositivos" y probar encender/apagar. Pendiente también lo de las
-zonas como `switch` helpers (ver arriba, sección de arquitectura).
+## Paso 7 completado — control por voz funcionando de extremo a extremo (27 sept 2026)
+
+**Problema encontrado: la skill de Smart Home en modo dev/beta no aparece en
+ningún buscador de la app de Alexa para la cuenta/región de México.**
+Se investigó a fondo antes de encontrar la causa: las skills Smart Home
+privadas/no publicadas **no son buscables** por diseño (ni en el buscador
+general ni en una categoría "Smart Home" de la tienda), y la categoría
+**"Dev"** de la tienda de skills (donde normalmente vive esto) **no existe en
+absoluto en la tienda de Alexa para México** — se confirmó deslizando toda la
+fila de categorías en la app hasta el final sin encontrarla. Se descartaron
+en el camino: la API de auto-habilitación de SMAPI (`PUT
+/v1/skills/{id}/stages/development/enablement` — responde 403 "You can only
+enable custom or music skills", Smart Home queda excluido a propósito) y el
+link directo `alexa-skills.amazon.com/apis/custom/skills/{id}/launch`
+(también solo válido para skills custom).
+
+**Solución que sí funcionó: Beta Testing.** Desde Distribution → Availability
+→ Beta Test, se agregaron como testers los correos del usuario y de quien
+administra el droplet, y se generó un "Copy link" de invitación — ese link,
+abierto en el navegador del celular, sí permite habilitar una skill Smart
+Home sin pasar por ninguna búsqueda ni categoría.
+
+**Requisito previo no obvio:** el Beta Test (igual que la certificación
+pública) exige completar todo el checklist de "Skill Preview" aunque nunca se
+vaya a publicar: Privacy & Compliance (4 preguntas Sí/No + export compliance),
+categoría (Smart Home), ícono pequeño 108×108 y grande 512×512, descripción
+corta y detallada, al menos un "Example Phrase", Privacy Policy URL, y
+Testing Instructions con usuario/contraseña reales de Home Assistant (campo
+no visible a clientes, solo para revisión). Se resolvió:
+- `PRIVACY.md` en el repo, servido públicamente vía
+  `https://raw.githubusercontent.com/anblsrz-oss/dreame-alexa-integration/master/PRIVACY.md`.
+- Íconos generados con Python/Pillow (dibujo simple de un robot aspiradora
+  visto desde arriba: cuerpo circular, sensor central, luz de estado, ruedas)
+  en `assets/icon_small_108.png` y `assets/icon_large_512.png` (script:
+  `assets/generate_icon.py`).
+- Descripción detallada reescrita para cumplir las reglas de Amazon: mencionar
+  prerrequisitos (instancia propia de Home Assistant con la integración
+  Dreame Vacuum configurada), usar la palabra "skill" sin traducir, aclarar
+  que no hay afiliación con Amazon ni con Dreame.
+
+**Bug encontrado y resuelto: el account linking se quedaba en loop.**
+Al activar la skill desde dentro de la app de Alexa, el login de Home
+Assistant se abría en el **navegador integrado de la app de Alexa**
+(in-app browser), y tras darle "Allow" regresaba a la misma pantalla en vez
+de completar el flujo. La solución fue copiar la URL de esa pantalla y
+abrirla en Chrome normal (fuera de la app) — ahí sí completó el login y el
+account linking sin problema. **Causa probable:** restricciones de cookies/
+sesión del navegador integrado de la app de Alexa con el flujo OAuth de Home
+Assistant.
+
+**Resultado final:** cuenta vinculada, "Alexa, descubre dispositivos"
+encontró el robot, y se confirmó control por voz real (encender/apagar el
+D10 Plus) desde Alexa.
+
+**Pendiente:** las zonas de limpieza como `switch` helpers en Home Assistant
+(ver sección de arquitectura arriba) — hoy solo se puede encender/apagar el
+robot en general por voz, no limpiar una habitación específica por nombre.

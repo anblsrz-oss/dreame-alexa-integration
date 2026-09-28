@@ -1,0 +1,72 @@
+# Scripts de limpieza por zona para el Dreame D10 Plus Gen 2.
+#
+# Cada uno llama al servicio de la integración dreame-vacuum para limpiar
+# solo el segmento (room_id) correspondiente, obtenido de los atributos de
+# `camera.d10_plus_gen_2_map` (ver CONTEXTO.md). Se exponen a Alexa como
+# entidades `script.*`, que Home Assistant soporta nativamente para Alexa:
+# se activan diciendo el nombre del script directo (ej. "Alexa, limpiar
+# cocina") o con "Alexa, enciende limpiar cocina" — ambas formas funcionan,
+# igual que con una escena. No hace falta ningún switch/automatización
+# intermedia.
+#
+# Instrucciones: fusionar estas claves dentro de
+# homeassistant/config/scripts.yaml (o incluir este archivo con
+# `script: !include scripts-zonas.yaml` en configuration.yaml si scripts.yaml
+# no existe todavía). Reiniciar Home Assistant después.
+#
+# Ajusta `entity_id` si tu entidad del robot no se llama
+# `vacuum.d10_plus_gen_2`.
+
+limpiar_cocina:
+  alias: "Limpiar cocina"
+  sequence:
+    - service: dreame_vacuum.vacuum_clean_segment
+      target:
+        entity_id: vacuum.d10_plus_gen_2
+      data:
+        segments: [1]
+
+limpiar_cuarto_papas:
+  alias: "Limpiar cuarto papás"
+  sequence:
+    - service: dreame_vacuum.vacuum_clean_segment
+      target:
+        entity_id: vacuum.d10_plus_gen_2
+      data:
+        segments: [2]
+
+limpiar_comedor:
+  alias: "Limpiar comedor"
+  sequence:
+    - service: dreame_vacuum.vacuum_clean_segment
+      target:
+        entity_id: vacuum.d10_plus_gen_2
+      data:
+        segments: [3]
+
+limpiar_cuarto_ninos:
+  alias: "Limpiar cuarto niños"
+  sequence:
+    - service: dreame_vacuum.vacuum_clean_segment
+      target:
+        entity_id: vacuum.d10_plus_gen_2
+      data:
+        segments: [4]
+
+limpiar_sala:
+  alias: "Limpiar sala"
+  sequence:
+    - service: dreame_vacuum.vacuum_clean_segment
+      target:
+        entity_id: vacuum.d10_plus_gen_2
+      data:
+        segments: [5]
+
+limpiar_pasillo:
+  alias: "Limpiar pasillo"
+  sequence:
+    - service: dreame_vacuum.vacuum_clean_segment
+      target:
+        entity_id: vacuum.d10_plus_gen_2
+      data:
+        segments: [7]

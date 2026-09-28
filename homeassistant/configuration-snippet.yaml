@@ -54,7 +54,13 @@ alexa:
     filter:
       include_domains:
         - vacuum
-      # Si además quieres exponer switches/zonas creadas como helpers:
-      # include_entities:
-      #   - switch.limpiar_sala
-      #   - switch.limpiar_cocina
+      # Scripts de limpieza por zona (ver homeassistant/scripts-zonas.yaml).
+      # Se exponen como entidades activables por voz ("Alexa, limpiar
+      # cocina" o "Alexa, enciende limpiar cocina").
+      include_entities:
+        - script.limpiar_sala
+        - script.limpiar_comedor
+        - script.limpiar_cocina
+        - script.limpiar_cuarto_papas
+        - script.limpiar_cuarto_ninos
+        - script.limpiar_pasillo

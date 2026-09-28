@@ -166,14 +166,51 @@ en la skill, luego reinicia Home Assistant.
 
 ## Paso 7 — Probar
 
-1. En la app de Alexa (con la misma cuenta de Amazon del desarrollador),
-   ve a **Más → Skills y juegos → Tus skills → Dev** y activa tu skill.
-2. Completa el account linking (te pedirá login contra tu Home Assistant).
-3. Di **"Alexa, descubre dispositivos"** — debería encontrar el robot (y sus
-   zonas, si las expusiste como entidades separadas).
-4. Prueba: *"Alexa, enciende [nombre del robot]"* para iniciar limpieza,
+**Importante — en el mercado de México la skill privada NO aparece en ningún
+buscador de la app de Alexa** (ni en el buscador general ni existe la
+categoría "Dev" que sí existe en EE.UU./UK). La forma que sí funciona:
+
+1. En la consola de Alexa Developer, completa **primero** el checklist de
+   "Skill Preview" (obligatorio incluso para beta test, no solo para
+   publicar): categoría, ícono pequeño 108×108 y grande 512×512 (hay unos
+   genéricos en `assets/`), descripción corta y detallada, un "Example
+   Phrase", Privacy & Compliance (todo "No" + marcar export compliance), y
+   una Privacy Policy URL (usa `PRIVACY.md` de este repo vía
+   `raw.githubusercontent.com`).
+2. Ve a **Distribution → Availability → Beta Test**, agrega tu correo (y el
+   de quien más vaya a usarla) como tester, y dale **"Copy link"**.
+3. Abre ese link **en el navegador normal del celular (Chrome/Safari), no
+   dentro de la app de Alexa** — si lo abres desde dentro de la app, el login
+   de Home Assistant puede quedarse en loop (dale Allow y regresa a la misma
+   pantalla). Si eso pasa, copia la URL de esa pantalla y ábrela en una
+   pestaña nueva de Chrome normal.
+4. Acepta los "Skill Beta Testing Terms" e inicia sesión con tu usuario de
+   Home Assistant cuando te lo pida (account linking).
+5. Ya vinculada, en la app de Alexa di **"Alexa, descubre dispositivos"** —
+   debería encontrar el robot y, si ya hiciste el Paso 8, las zonas.
+6. Prueba: *"Alexa, enciende [nombre del robot]"* para iniciar limpieza,
    *"Alexa, apaga [nombre del robot]"* para detener/regresar a base.
-5. Crea una rutina en la app de Alexa que incluya el dispositivo del robot.
+7. Crea una rutina en la app de Alexa que incluya el dispositivo del robot.
+
+## Paso 8 — Limpieza por zona (opcional)
+
+El modelo de dispositivo "vacuum" de Alexa solo soporta encender/apagar, no
+"limpia la zona X" por nombre libre. La forma de lograrlo es con scripts:
+
+1. Encuentra el `room_id` de cada zona: **Herramientas de desarrollador →
+   Estados** → abre `camera.<tu_vacuum>_map` → revisa el atributo `rooms`
+   (cada una trae `room_id` y `name`, que puedes cruzar contra el mapa visual
+   de la entidad para saber cuál habitación es cuál).
+2. Fusiona `homeassistant/scripts-zonas.yaml` dentro de tu `scripts.yaml`
+   (ajustando `entity_id` y los números de `segments` a tus propios
+   `room_id`).
+3. Agrega esos scripts al filtro del bloque `alexa:` en
+   `homeassistant/configuration-snippet.yaml` (`include_entities`).
+4. Reinicia Home Assistant y vuelve a decir "Alexa, descubre dispositivos".
+5. Ya puedes decir **"Alexa, limpiar cocina"** (o "Alexa, enciende limpiar
+   cocina") y limpia solo esa zona — Home Assistant expone los `script.*`
+   como activables por voz de forma nativa, sin necesitar switches
+   intermedios.
 
 ---
 
@@ -188,11 +225,18 @@ en la skill, luego reinicia Home Assistant.
 ## Notas importantes
 
 - El robot usa comandos tipo "encender/apagar" en el modelo de dispositivo
-  Alexa para vacuum (no hay un intent nativo de Alexa para "limpiar la sala X"
-  por nombre libre; para eso conviene exponer zonas como `switch` helpers en
-  Home Assistant, cada uno disparando un script que llame al servicio de
-  limpieza por zona de la integración Dreame, y luego incluir esos switches en
-  el `filter.include_entities` del bloque `alexa:`).
+  Alexa para vacuum. La limpieza por zona ("limpiar cocina") ya está resuelta
+  vía scripts — ver Paso 8.
+- La integración `Tasshack/dreame-vacuum` tiene dos versiones en HACS: la
+  **estable** solo hace login contra la nube de Xiaomi (falla con cuentas
+  Dreamehome puras, error "Could not login, check the credentials"), la
+  **beta** sí soporta login directo con cuenta Dreamehome. Usa la beta
+  (HACS → la integración → ⋮ → Redownload → marcar "show beta versions").
+- Si Alexa rechaza el ARN de Lambda con el error *"Please make sure that
+  'Alexa Smart Home' is selected for the event source type"* aunque
+  `aws lambda get-policy` ya muestre el `EventSourceToken` correcto, revisa
+  el `Principal` del permiso: debe ser `alexa-connectedhome.amazon.com`, no
+  `alexa-appkit.amazon.com` (ese es para skills custom/de conversación).
 - Si cambias la IP del VPS o vence el certificado sin renovarse
   automáticamente (Certbot instala renovación automática vía cron/systemd
   timer, verifícalo con `sudo certbot renew --dry-run`), el control por voz

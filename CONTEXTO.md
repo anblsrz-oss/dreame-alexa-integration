@@ -222,10 +222,46 @@ account linking sin problema. **Causa probable:** restricciones de cookies/
 sesión del navegador integrado de la app de Alexa con el flujo OAuth de Home
 Assistant.
 
-**Resultado final:** cuenta vinculada, "Alexa, descubre dispositivos"
-encontró el robot, y se confirmó control por voz real (encender/apagar el
-D10 Plus) desde Alexa.
+**Resultado final del Paso 7:** cuenta vinculada, "Alexa, descubre
+dispositivos" encontró el robot, y se confirmó control por voz real
+(encender/apagar el D10 Plus) desde Alexa.
 
-**Pendiente:** las zonas de limpieza como `switch` helpers en Home Assistant
-(ver sección de arquitectura arriba) — hoy solo se puede encender/apagar el
-robot en general por voz, no limpiar una habitación específica por nombre.
+## Paso 8 completado — limpieza por zona funcionando (28 sept 2026)
+
+Los 6 scripts de `homeassistant/scripts-zonas.yaml` se desplegaron con los
+`room_id` obtenidos directamente del mapa visual (`camera.d10_plus_gen_2_map`
+→ atributo `rooms`, cruzado contra la vista del mapa con las etiquetas
+"Room 1"…"Room 8"): Cocina=1, Cuarto papás=2, Comedor=3, Cuarto niños=4,
+Sala=5, Pasillo=7 (Room 6=baño y Room 8=exterior, no usados).
+
+**Dos incidentes en el despliegue, ninguno relacionado con los scripts en sí:**
+
+1. **Intermitencia real de la nube de Dreame.** Justo después de fusionar
+   `scripts.yaml` y actualizar el filtro de Alexa, la integración empezó a
+   fallar con `Unable to discover the device over cloud` en bucle, aunque el
+   robot seguía en línea en la app Dreamehome. Se investigó si era el bug
+   conocido de `paho-mqtt` v2.x (issues #866/#898 del repo) — descartado,
+   porque ya estamos en `v2.0.0b25`, muy posterior a la versión `b17` donde
+   se corrigió ese bug. La causa real fue simple intermitencia de la nube de
+   Dreame (confirmado por un comentario idéntico de otro usuario sobre
+   timeouts intermitentes en la región US) — se resolvió sola en
+   10-15 minutos sin tocar nada.
+2. **El servicio `dreame_vacuum.vacuum_clean_segment` daba "Acción no
+   encontrada"** al ejecutar los scripts, pese a que el nombre es correcto
+   (confirmado contra el código fuente exacto de la versión `v2.0.0b25`:
+   `DOMAIN = "dreame_vacuum"`, `SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"`).
+   Causa: el servicio no había terminado de registrarse tras el ciclo de
+   intermitencia/reinicios previos. Se resolvió con un reinicio limpio de
+   Home Assistant una vez que la nube ya estaba estable.
+
+**Verificado físicamente:** las 6 zonas limpian la habitación correcta
+(confirmado ejecutando cada script uno por uno desde Herramientas de
+desarrollador y observando al robot moverse a la zona correcta). Redescubierto
+en Alexa y **confirmado control por voz de las 6 zonas** ("Alexa, limpiar
+cocina", etc.).
+
+## Estado final: proyecto completo (28 sept 2026)
+
+Los 8 pasos del README están terminados. Alexa controla el D10 Plus Gen 2:
+encender/apagar el robot en general, y limpiar cada una de las 6 zonas de la
+casa por nombre, todo por voz. No queda ningún pendiente funcional conocido.
